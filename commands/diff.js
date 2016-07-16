@@ -1,7 +1,6 @@
 'use strict'
 
 const cli = require('heroku-cli-util')
-const co = require('co')
 const _ = require('lodash')
 
 function diff (context, heroku) {
@@ -16,7 +15,7 @@ function diff (context, heroku) {
     }
   }
 
-  Promise.all([ heroku.apps(ourApp).configVars().info(),
+  return Promise.all([ heroku.apps(ourApp).configVars().info(),
                 heroku.apps(otherApp).configVars().info() ])
     .then((result) => {
       const [ ourConfig, otherConfig ] = result
@@ -64,9 +63,6 @@ function diff (context, heroku) {
         }
       }
     })
-    .catch((err) => {
-      cli.error(err)
-    })
 }
 
 module.exports = {
@@ -105,5 +101,5 @@ DATABASE_URL
   needsAuth: true,
   needsApp: true,
 
-  run: cli.command(co.wrap(diff))
+  run: cli.command(diff)
 }

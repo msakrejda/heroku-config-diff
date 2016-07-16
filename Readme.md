@@ -10,12 +10,13 @@ to date.
 ```console
 $ heroku config:diff sushi --app sushi-staging
 === Only in sushi-staging
-GOMAXPROCS
-HEROKU_POSTGRESQL_AMBER_URL
+HEROKU_POSTGRESQL_GREEN_URL
+DEBUG
 === Only in sushi
-HEROKU_POSTGRESQL_BLUE_URL
-RATE_LIMIT
-=== Common
+HEROKU_POSTGRESQL_RED_URL
+=== Same value
+GOMAXPROCS
+=== Different values
 DATABASE_URL
 ```
 

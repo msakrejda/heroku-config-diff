@@ -1,6 +1,6 @@
 {
   "name": "heroku-config-diff",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A heroku plugin to display differences between app environments.",
   "main": "index.js",
   "author": "Maciek Sakrejda maciek@gmail.com",

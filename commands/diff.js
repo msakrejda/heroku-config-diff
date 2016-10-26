@@ -3,6 +3,14 @@
 const cli = require('heroku-cli-util')
 const _ = require('lodash')
 
+function elide (value, maxLen = 50) {
+  if (value && value.length > maxLen) {
+    return value.substr(0, maxLen - 1) + '…'
+  } else {
+    return value
+  }
+}
+
 function diff (context, heroku) {
   const ourApp = context.app
   const otherApp = context.args.OTHER_APP
@@ -26,39 +34,52 @@ function diff (context, heroku) {
       const onlyOther = _.difference(otherKeys, ourKeys)
       const common = _.intersection(ourKeys, otherKeys)
 
-      if (onlyOurs.length > 0) {
-        cli.styledHeader('Only in ' + ourApp)
-        onlyOurs.forEach(k => displayVar(k, ourConfig))
-      }
-
-      if (onlyOther.length > 0) {
-        cli.styledHeader('Only in ' + otherApp)
-        onlyOther.forEach(k => displayVar(k, otherConfig))
-      }
-
       const same = common.filter((key) => {
         return ourConfig[key] === otherConfig[key]
       })
       const different = _.difference(common, same)
 
-      if (same.length > 0) {
-        cli.styledHeader('Same value')
-        same.forEach(k => displayVar(k, ourConfig))
-      }
+      if (context.flags.verbose) {
+        const allKeys = _.uniq(ourKeys.concat(otherKeys)).sort()
+        cli.table(allKeys.map((k) => {
+          let ours = elide(ourConfig[k])
+          let other = elide(otherConfig[k])
 
-      if (different.length > 0) {
-        cli.styledHeader('Different values')
-        if (context.flags.verbose) {
-          cli.table(different.map((k) => {
-            return {key: k, ours: ourConfig[k], other: otherConfig[k]}
-          }), {
-            columns: [
-              {key: 'key', label: 'Config Var'},
-              {key: 'ours', label: `In ${ourApp}`},
-              {key: 'other', label: `In ${otherApp}`},
-            ]
-          })
-        } else {
+          if (ours && !other) {
+            other = cli.color.red('--')
+          } else if (!ours && other) {
+            ours = cli.color.red('--')
+          } else if (ours !== other) {
+            ours = cli.color.red(ours)
+            other = cli.color.green(other)
+          }
+
+          return {key: k, ours: ours, other: other}
+        }), {
+          columns: [
+            {key: 'key', label: 'Config Var'},
+            {key: 'ours', label: `In ${ourApp}`},
+            {key: 'other', label: `In ${otherApp}`},
+          ]
+        })
+      } else {
+        if (onlyOurs.length > 0) {
+          cli.styledHeader('Only in ' + ourApp)
+          onlyOurs.forEach(k => displayVar(k, ourConfig))
+        }
+
+        if (onlyOther.length > 0) {
+          cli.styledHeader('Only in ' + otherApp)
+          onlyOther.forEach(k => displayVar(k, otherConfig))
+        }
+
+        if (same.length > 0) {
+          cli.styledHeader('Same value')
+          same.forEach(k => displayVar(k, ourConfig))
+        }
+
+        if (different.length > 0) {
+          cli.styledHeader('Different values')
           different.forEach((k) => displayVar(k, ourConfig))
         }
       }

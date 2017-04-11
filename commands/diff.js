@@ -1,6 +1,7 @@
 'use strict'
 
 const cli = require('heroku-cli-util')
+const co = require('co')
 const _ = require('lodash')
 
 function elide (value, maxLen = 50) {
@@ -11,7 +12,7 @@ function elide (value, maxLen = 50) {
   }
 }
 
-function diff (context, heroku) {
+function * diff (context, heroku) {
   const ourApp = context.app
   const otherApp = context.args.OTHER_APP
 
@@ -23,67 +24,81 @@ function diff (context, heroku) {
     }
   }
 
-  return Promise.all([ heroku.apps(ourApp).configVars().info(),
-                heroku.apps(otherApp).configVars().info() ])
-    .then((result) => {
-      const [ ourConfig, otherConfig ] = result
-      const ourKeys = Object.keys(ourConfig)
-      const otherKeys = Object.keys(otherConfig)
+  let noAddons = context.flags['no-addons']
+  const [ ourConfig, ourAttachments, otherConfig, otherAttachments ] = yield [
+    heroku.get(`/apps/${ourApp}/config-vars`),
+    noAddons && heroku.get(`/apps/${ourApp}/addon-attachments`,
+                           { headers: { 'Accept-Inclusion': 'config_vars' } }),
 
-      const onlyOurs = _.difference(ourKeys, otherKeys)
-      const onlyOther = _.difference(otherKeys, ourKeys)
-      const common = _.intersection(ourKeys, otherKeys)
+    heroku.get(`/apps/${otherApp}/config-vars`),
+    noAddons && heroku.get(`/apps/${otherApp}/addon-attachments`,
+                           { headers: { 'Accept-Inclusion': 'config_vars' } }),
+  ]
 
-      const same = common.filter((key) => {
-        return ourConfig[key] === otherConfig[key]
-      })
-      const different = _.difference(common, same)
+  let ourKeys = Object.keys(ourConfig)
+  let otherKeys = Object.keys(otherConfig)
 
-      if (context.flags.verbose) {
-        const allKeys = _.uniq(ourKeys.concat(otherKeys)).sort()
-        cli.table(allKeys.map((k) => {
-          let ours = elide(ourConfig[k])
-          let other = elide(otherConfig[k])
+  if (noAddons) {
+    let ourAddonConfigVars = _.flatten(ourAttachments.map((attachment) => attachment.config_vars))
+    ourKeys = _.difference(ourKeys, ourAddonConfigVars)
 
-          if (ours && !other) {
-            other = cli.color.red('--')
-          } else if (!ours && other) {
-            ours = cli.color.red('--')
-          } else if (ours !== other) {
-            ours = cli.color.red(ours)
-            other = cli.color.green(other)
-          }
+    let otherAddonConfigVars = _.flatten(otherAttachments.map((attachment) => attachment.config_vars))
+    otherKeys = _.difference(otherKeys, otherAddonConfigVars)
+  }
 
-          return {key: k, ours: ours, other: other}
-        }), {
-          columns: [
-            {key: 'key', label: 'Config Var'},
-            {key: 'ours', label: `In ${ourApp}`},
-            {key: 'other', label: `In ${otherApp}`},
-          ]
-        })
-      } else {
-        if (onlyOurs.length > 0) {
-          cli.styledHeader('Only in ' + ourApp)
-          onlyOurs.forEach(k => displayVar(k, ourConfig))
-        }
+  const onlyOurs = _.difference(ourKeys, otherKeys)
+  const onlyOther = _.difference(otherKeys, ourKeys)
+  const common = _.intersection(ourKeys, otherKeys)
 
-        if (onlyOther.length > 0) {
-          cli.styledHeader('Only in ' + otherApp)
-          onlyOther.forEach(k => displayVar(k, otherConfig))
-        }
+  const same = common.filter((key) => {
+    return ourConfig[key] === otherConfig[key]
+  })
+  const different = _.difference(common, same)
 
-        if (same.length > 0) {
-          cli.styledHeader('Same value')
-          same.forEach(k => displayVar(k, ourConfig))
-        }
+  if (context.flags.verbose) {
+    const allKeys = _.uniq(ourKeys.concat(otherKeys)).sort()
+    cli.table(allKeys.map((k) => {
+      let ours = elide(ourConfig[k])
+      let other = elide(otherConfig[k])
 
-        if (different.length > 0) {
-          cli.styledHeader('Different values')
-          different.forEach((k) => displayVar(k, ourConfig))
-        }
+      if (ours && !other) {
+        other = cli.color.red('--')
+      } else if (!ours && other) {
+        ours = cli.color.red('--')
+      } else if (ours !== other) {
+        ours = cli.color.red(ours)
+        other = cli.color.green(other)
       }
+
+      return {key: k, ours: ours, other: other}
+    }), {
+      columns: [
+        {key: 'key', label: 'Config Var'},
+        {key: 'ours', label: `In ${ourApp}`},
+        {key: 'other', label: `In ${otherApp}`},
+      ]
     })
+  } else {
+    if (onlyOurs.length > 0) {
+      cli.styledHeader('Only in ' + ourApp)
+      onlyOurs.forEach(k => displayVar(k, ourConfig))
+    }
+
+    if (onlyOther.length > 0) {
+      cli.styledHeader('Only in ' + otherApp)
+      onlyOther.forEach(k => displayVar(k, otherConfig))
+    }
+
+    if (same.length > 0) {
+      cli.styledHeader('Same value')
+      same.forEach(k => displayVar(k, ourConfig))
+    }
+
+    if (different.length > 0) {
+      cli.styledHeader('Different values')
+      different.forEach((k) => displayVar(k, ourConfig))
+    }
+  }
 }
 
 module.exports = {
@@ -96,7 +111,10 @@ module.exports = {
   flags: [
     { name: 'verbose', char: 'v',
       description: 'include config var values in diff',
-      hasValue: false, optional: true },
+      hasValue: false },
+    { name: 'no-addons', char: 'n',
+      description: 'do not include config vars from add-on attachments',
+      hasValue: false },
   ],
   help: `
 config:diff app
@@ -122,5 +140,5 @@ DATABASE_URL
   needsAuth: true,
   needsApp: true,
 
-  run: cli.command(diff)
+  run: cli.command(co.wrap(diff))
 }

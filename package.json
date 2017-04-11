@@ -13,8 +13,9 @@
   ],
   "license": "ISC",
   "dependencies": {
-    "heroku-cli-util": "^5.10.12",
-    "lodash": "^4.6.1"
+    "co": "4.6.0",
+    "heroku-cli-util": "6.1.17",
+    "lodash": "4.6.1"
   },
   "scripts": {
     "test": "eslint index.js commands/"

@@ -4,9 +4,9 @@
   "description": "A heroku plugin to display differences between app environments.",
   "main": "index.js",
   "author": "Maciek Sakrejda",
-  "repository": "uhoh-itsmaciek/heroku-run-localjs",
+  "repository": "uhoh-itsmaciek/heroku-config-diff",
   "bugs": {
-    "url": "https://github.com/uhoh-itsmaciek/heroku-run-localjs/issues"
+    "url": "https://github.com/uhoh-itsmaciek/heroku-config-diff/issues"
   },
   "keywords": [
     "heroku-plugin"
@@ -20,6 +20,10 @@
   "scripts": {
     "test": "eslint index.js commands/"
   },
+  "files": [
+    "/index.js",
+    "/commands"
+  ],
   "devDependencies": {
     "chai": "*",
     "eslint": "*",

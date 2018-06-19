@@ -28,11 +28,11 @@ function * diff (context, heroku) {
   const [ ourConfig, ourAttachments, otherConfig, otherAttachments ] = yield [
     heroku.get(`/apps/${ourApp}/config-vars`),
     noAddons && heroku.get(`/apps/${ourApp}/addon-attachments`,
-                           { headers: { 'Accept-Inclusion': 'config_vars' } }),
+      { headers: { 'Accept-Inclusion': 'config_vars' } }),
 
     heroku.get(`/apps/${otherApp}/config-vars`),
     noAddons && heroku.get(`/apps/${otherApp}/addon-attachments`,
-                           { headers: { 'Accept-Inclusion': 'config_vars' } }),
+      { headers: { 'Accept-Inclusion': 'config_vars' } }),
   ]
 
   let ourKeys = Object.keys(ourConfig)
@@ -109,12 +109,8 @@ module.exports = {
     { name: 'OTHER_APP', optional: false },
   ],
   flags: [
-    { name: 'verbose', char: 'v',
-      description: 'include config var values in diff',
-      hasValue: false },
-    { name: 'no-addons', char: 'n',
-      description: 'do not include config vars from add-on attachments',
-      hasValue: false },
+    { name: 'verbose', char: 'v', description: 'include config var values in diff', hasValue: false },
+    { name: 'no-addons', char: 'n', description: 'do not include config vars from add-on attachments', hasValue: false },
   ],
   help: `
 config:diff app
